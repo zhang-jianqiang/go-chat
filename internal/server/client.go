@@ -6,15 +6,17 @@ import (
 	"chat-room/pkg/common/constant"
 	"chat-room/pkg/global/log"
 	"chat-room/pkg/protocol"
+	"sync"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/gorilla/websocket"
 )
 
 type Client struct {
-	Conn *websocket.Conn
-	Name string
-	Send chan []byte
+	Conn  *websocket.Conn
+	Name  string
+	Send  chan []byte
+	Mutex *sync.Mutex
 }
 
 func (c *Client) Read() {
@@ -46,7 +48,9 @@ func (c *Client) Read() {
 			if nil != err2 {
 				log.Logger.Error("client marshal message error", log.Any("client marshal message error", err2.Error()))
 			}
+			c.Mutex.Lock()
 			c.Conn.WriteMessage(websocket.BinaryMessage, pongByte)
+			c.Mutex.Unlock()
 		} else {
 			if config.GetConfig().MsgChannelType.ChannelType == constant.KAFKA {
 				kafka.Send(message)
@@ -63,6 +67,8 @@ func (c *Client) Write() {
 	}()
 
 	for message := range c.Send {
+		c.Mutex.Lock()
 		c.Conn.WriteMessage(websocket.BinaryMessage, message)
+		c.Mutex.Unlock()
 	}
 }

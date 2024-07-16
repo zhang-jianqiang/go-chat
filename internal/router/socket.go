@@ -4,6 +4,7 @@ import (
 	"chat-room/internal/server"
 	"chat-room/pkg/global/log"
 	"net/http"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -22,15 +23,17 @@ func RunSocekt(c *gin.Context) {
 		return
 	}
 	log.Logger.Info("newUser", zap.String("newUser", user))
+	// todo: 这里做认证校验
 	ws, err := upGrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		return
 	}
 
 	client := &server.Client{
-		Name: user,
-		Conn: ws,
-		Send: make(chan []byte),
+		Name:  user,
+		Conn:  ws,
+		Send:  make(chan []byte),
+		Mutex: &sync.Mutex{},
 	}
 
 	server.MyServer.Register <- client
